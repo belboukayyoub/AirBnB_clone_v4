@@ -78,6 +78,17 @@ button:hover {
     margin: 0px;
 }
 
+.amenities .popover ul li input[type="checkbox"]{
+    margin-right: 10px;
+}
+
+.amenities h4{
+    max-width: 300px;
+    white-space: nowrap;
+    overflow-y: clip;
+    text-overflow: ellipsis;
+}
+
 .locations .popover {
     margin-top: 0%;
 }
