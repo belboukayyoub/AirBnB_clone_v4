@@ -112,3 +112,15 @@ button:hover {
 .locations:hover .popover {
     visibility: visible;
 }
+
+
+.locations .popover ul li input[type="checkbox"]{
+    margin-right: 10px;
+}
+
+.locations h4{
+    max-width: 300px;
+    white-space: nowrap;
+    overflow-y: clip;
+    text-overflow: ellipsis;
+}
