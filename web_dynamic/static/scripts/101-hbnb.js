@@ -1,0 +1,152 @@
+$(document).ready(function () {
+  const selectedAmenities = {};
+  const selectedstates = {};
+  const selectedCities = {};
+  $(".amenities .popover input").change(function () {
+    if ($(this).is(":checked")) {
+      selectedAmenities[$(this).data("id")] = $(this).data("name");
+    } else if ($(this).is(":not(:checked)")) {
+      delete selectedAmenities[$(this).data("id")];
+    }
+    const names = Object.values(selectedAmenities);
+    $(".amenities h4").text(names.sort().join(", "));
+  });
+
+  $(".locations .popover .state_input").change(function () {
+    if ($(this).is(":checked")) {
+      selectedstates[$(this).data("id")] = $(this).data("name");
+    } else if ($(this).is(":not(:checked)")) {
+      delete selectedstates[$(this).data("id")];
+    }
+    const names = [
+      ...Object.values(selectedstates),
+      ...Object.values(selectedCities),
+    ];
+    $(".locations h4").text(names.sort().join(", "));
+  });
+
+  $(".locations .popover .city_input").change(function () {
+    if ($(this).is(":checked")) {
+      selectedCities[$(this).data("id")] = $(this).data("name");
+    } else if ($(this).is(":not(:checked)")) {
+      delete selectedCities[$(this).data("id")];
+    }
+    const names = [
+      ...Object.values(selectedstates),
+      ...Object.values(selectedCities),
+    ];
+    $(".locations h4").text(names.sort().join(", "));
+  });
+
+  $.get(`http://0.0.0.0:5001/api/v1/status/`, (data) => {
+    if (data.status === "OK") {
+      $("#api_status").addClass("available");
+    } else {
+      $("#api_status").removeClass("available");
+    }
+  });
+
+  getPlaces({}, {}, {});
+
+  $(".filters button").click(function () {
+    getPlaces(selectedAmenities, selectedstates, selectedCities);
+  });
+});
+
+const getPlaces = function (amenities, states, cities) {
+  $.post({
+    url: `http://0.0.0.0:5001/api/v1/places_search/`,
+    contentType: "application/json",
+    data: JSON.stringify({ amenities, states, cities }),
+    dataType: "json",
+    success: function (response) {
+      $("SECTION.places").empty();
+      for (const r of response) {
+        const article = `<article>
+            <div class="title_box">
+            <h2>${r.name}</h2>
+            <div class="price_by_night">$${r.price_by_night}</div>
+            </div>
+            <div class="information">
+            <div class="max_guest">${r.max_guest} Guest(s)</div>
+            <div class="number_rooms">${r.number_rooms} Bedroom(s)</div>
+            <div class="number_bathrooms">${r.number_bathrooms} Bathroom(s)</div>
+            </div>
+            <div class="description"> ${r.description} </div>
+            <div class="reviews"><h2>
+            <span id="count_${r.id}" class="review">Reviews</span>
+            <span onclick="showReviews(this)" data-id="${r.id}" data-show="1">Show</span></h2>
+            <ul id="list_${r.id}"></ul>
+            </div>
+        </article>`;
+        $("SECTION.places").append(article);
+      }
+    },
+    error: function (error) {
+      console.log(error);
+    },
+  });
+};
+
+const dateOrdinal = function (day) {
+  if (day >= 10 && day <= 20) {
+    return day + "th";
+  } else {
+    const lastDigit = day % 10;
+    switch (lastDigit) {
+      case 1:
+        return day + "st";
+      case 2:
+        return day + "nd";
+      case 3:
+        return day + "rd";
+      default:
+        return day + "th";
+    }
+  }
+};
+
+const showReviews = function (obj) {
+  const id = $(obj).data("id");
+  const isShow = $(obj).data("show");
+  if (isShow) {
+    $(obj).data("show", 0);
+    $(obj).html("Hide");
+    $.get(
+      `http://0.0.0.0:5001/api/v1/places/${id}/reviews`,
+      (data, textStatus) => {
+        if (textStatus === "success") {
+          $(`#count_${id}`).html(
+            data.length + " Review" + (data.length !== 1 ? "s" : "")
+          );
+          for (const review of data) {
+            const date = new Date(review.created_at);
+            const month = date.toLocaleString("en", { month: "long" });
+            const day = dateOrdinal(date.getDate());
+
+            if (review.user_id) {
+              $.get(
+                `http://0.0.0.0:5001/api/v1/users/${review.user_id}`,
+                (data, textStatus) => {
+                  if (textStatus === "success") {
+                    $("#list_" + id).append(
+                      `<li><h3>From ${data.first_name} ${data.last_name} the ${
+                        day + " " + month + " " + date.getFullYear()
+                      }</h3>
+                    <p>${review.text}</p>
+                    </li>`
+                    );
+                  }
+                }
+              );
+            }
+          }
+        }
+      }
+    );
+  } else {
+    $(obj).data("show", 1);
+    $(obj).html("Show");
+    $("#list_" + id).empty();
+  }
+};
